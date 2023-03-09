@@ -25,33 +25,69 @@ class Scanner extends Controller implements ScannerInterface
      * @return float|int|mixed
      */
     public function total() {
+        $counts = array();
+        $discounts = array();
+
+        // count the number of each item
+        foreach ($this->items as $item) {
+            $counts[$item->productCode] += 1;
+        }
+
+        $total = 0;
 
         // calculate the total cost for each item
-        foreach ($this->items as $code => $count) {
+        foreach ($counts as $code => $count) {
             $itemTotal = 0;
             switch ($code) {
-                case "#AP":
+                case "#RA":
+                    // apply discount for more than 3 raspberries
                     $discountedCount = $count;
                     if ($count > 3) {
                         $discountedCount = 3 + ($count - 3) * 0.5;
                     }
                     $itemTotal = $discountedCount * 1.5;
+                    break;
+                case "#AP":
+                    $itemTotal = $count * 3.5;
+                    break;
                 case "#WA":
-                // price for #WA
-                case "#RA":
-                // price for #RA
+                    // apply "buy one get one free" discount for watermelons
+                    $discountedCount = $count - floor($count / 2);
+                    $itemTotal = $discountedCount * 5;
                     break;
                 default:
                     throw new Exception("Invalid product code: " . $code);
             }
 
+            // add the item's total cost to the overall total
+            $total += $itemTotal;
+
+            // add any discounts applied to the discount array
+            if ($discountedCount < $count) {
+                $discounts[] = ($count - $discountedCount) * $item->price;
+            }
         }
 
+        // subtract any discounts from the total
+        foreach ($discounts as $discount) {
+            $total -= $discount;
+        }
+
+        return $total;
     }
 
     public function scanProduct()
     {
-        // scan product
+        $scanner = new self();
+        $scanner->scan(new Item("#RA", 1.5));
+        $scanner->scan(new Item("#RA", 1.5));
+        $scanner->scan(new Item("#RA", 1.5));
+        $scanner->scan(new Item("#RA", 1.5));
+        $scanner->scan(new Item("#WA", 5));
+        $scanner->scan(new Item("#WA", 5));
+        $scanner->scan(new Item("#AP", 3.5));
+        $scanner->scan(new Item("#RA", 1.5));
+        $total = $scanner->total(); // $total should be 15.00
     }
 }
 
